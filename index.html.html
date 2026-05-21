@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard Folkafe | Google Sheets corrigido v6</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #f6f1ea;
+      --panel: rgba(255,255,255,.82);
+      --card: rgba(255,255,255,.92);
+      --text: #221915;
+      --muted: #7c6f66;
+      --brand: #6f3d20;
+      --brand-2: #b36b37;
+      --green: #2f7d4f;
+      --red: #b83b30;
+      --amber: #c88719;
+      --line: rgba(96, 64, 42, .16);
+      --shadow: 0 18px 50px rgba(62, 35, 20, .12);
+      --radius: 24px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(179,107,55,.24), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(111,61,32,.18), transparent 30rem),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    a { color: inherit; text-decoration: none; }
+    .app { display: grid; grid-template-columns: 290px minmax(0, 1fr); min-height: 100vh; }
+    aside {
+      position: sticky; top: 0; height: 100vh; padding: 24px; border-right: 1px solid var(--line);
+      background: rgba(255, 249, 241, .7); backdrop-filter: blur(18px);
+    }
+    .logoBox {
+      border: 1px dashed rgba(111,61,32,.35); border-radius: 22px; min-height: 148px;
+      display: grid; place-items: center; text-align: center; padding: 16px; background: rgba(255,255,255,.6);
+      margin-bottom: 14px; overflow: hidden;
+    }
+    .logoBox img { max-width: 100%; max-height: 108px; object-fit: contain; display:none; }
+    .logoBox .placeholder { color: var(--muted); font-size: 13px; line-height: 1.35; }
+    .logoActions { display: flex; gap: 8px; margin-bottom: 20px; }
+    input[type="file"] { display: none; }
+    .smallBtn, .nav button, .exportBtn {
+      border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 10px 12px;
+      cursor: pointer; color: var(--text); font-weight: 700; transition: .18s ease;
+    }
+    .smallBtn:hover, .exportBtn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+    .brandTitle { margin: 16px 0 4px; font-size: 22px; line-height: 1.05; letter-spacing: -.03em; }
+    .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+    .nav { display: grid; gap: 10px; }
+    .nav button {
+      width: 100%; display:flex; justify-content:space-between; align-items:center; border-radius: 18px;
+      padding: 13px 14px; text-align: left; background: rgba(255,255,255,.55);
+    }
+    .nav button.active { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; box-shadow: var(--shadow); }
+    .nav span:last-child { opacity: .7; font-size: 12px; }
+    .sideFoot { position:absolute; bottom: 22px; left: 24px; right: 24px; color: var(--muted); font-size: 12px; }
+    main { padding: 30px; overflow-x: hidden; }
+    .topbar { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom: 24px; }
+    h1 { font-size: clamp(26px, 4vw, 46px); margin: 0; letter-spacing: -.055em; line-height: 1; }
+    .lead { color: var(--muted); max-width: 760px; margin: 12px 0 0; line-height:1.55; }
+    .toolbar { display:flex; gap: 10px; flex-wrap: wrap; justify-content:flex-end; }
+    .filter, .search {
+      border: 1px solid var(--line); background: var(--card); padding: 11px 13px; border-radius: 16px;
+      min-width: 150px; outline: none; color: var(--text); box-shadow: 0 8px 20px rgba(62, 35, 20, .04);
+    }
+    .search { min-width: 260px; }
+    .grid { display:grid; gap: 18px; }
+    .kpis { grid-template-columns: repeat(4, minmax(160px, 1fr)); margin-bottom: 18px; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px;
+      box-shadow: var(--shadow); backdrop-filter: blur(10px);
+    }
+    .kpi .label { color: var(--muted); font-size: 13px; font-weight: 700; }
+    .kpi .value { font-size: 31px; font-weight: 900; margin-top: 8px; letter-spacing: -.04em; }
+    .kpi .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
+    .charts { grid-template-columns: 1.25fr .75fr; margin-bottom: 18px; }
+    .charts3 { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 18px; }
+    .card h2 { margin:0 0 14px; font-size: 18px; letter-spacing:-.025em; }
+    .tableWrap { overflow:auto; border-radius: 18px; border: 1px solid var(--line); background: rgba(255,255,255,.55); }
+    table { border-collapse: collapse; min-width: 920px; width:100%; font-size: 13px; }
+    th, td { text-align:left; padding: 12px 13px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    th { position: sticky; top: 0; background: #fff9f1; z-index: 1; color: #4d3325; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+    tr:hover td { background: rgba(179,107,55,.08); }
+    .badge { display:inline-flex; align-items:center; gap:6px; padding: 5px 9px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+    .ok { background: rgba(47,125,79,.12); color: var(--green); }
+    .warn { background: rgba(200,135,25,.14); color: #8a5a06; }
+    .danger { background: rgba(184,59,48,.12); color: var(--red); }
+    .income { color: var(--green); font-weight: 900; }
+    .outcome { color: var(--red); font-weight: 900; }
+    .page { display: none; animation: fade .22s ease; }
+    .page.active { display: block; }
+    @keyframes fade { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+    .hero {
+      display:grid; grid-template-columns: 1.1fr .9fr; gap:18px; margin-bottom:18px;
+    }
+    .heroCard {
+      min-height: 250px; background: linear-gradient(135deg, rgba(111,61,32,.96), rgba(179,107,55,.9));
+      color:#fff; border: 0; position:relative; overflow:hidden;
+    }
+    .heroCard:after {
+      content:""; position:absolute; width:280px; height:280px; border-radius:50%; right:-80px; bottom:-110px;
+      background: rgba(255,255,255,.13);
+    }
+    .heroCard h2 { font-size: 34px; line-height:1.02; max-width: 650px; }
+    .heroCard p { color: rgba(255,255,255,.82); max-width: 660px; line-height:1.55; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:18px; }
+    .actions a, .actions button { background:rgba(255,255,255,.18); color:#fff; border:1px solid rgba(255,255,255,.28); padding:11px 14px; border-radius:999px; font-weight:800; cursor:pointer; }
+    canvas { max-height: 330px; }
+    .healthList { display:grid; gap: 11px; }
+    .healthItem { display:flex; justify-content:space-between; gap:12px; align-items:center; padding: 12px; border:1px solid var(--line); border-radius: 16px; background:rgba(255,255,255,.5); }
+    .bar { height: 10px; background:rgba(111,61,32,.12); border-radius:999px; overflow:hidden; width: 130px; }
+    .bar > span { display:block; height:100%; background:linear-gradient(90deg, var(--brand-2), var(--brand)); border-radius:999px; }
+
+    .sheetForm { display:grid; gap: 14px; }
+    .sheetRow { display:grid; gap: 7px; }
+    .sheetRow label { font-weight: 900; color:#4d3325; font-size: 13px; }
+    .sheetInput {
+      width:100%; border:1px solid var(--line); background: var(--card); padding: 12px 13px; border-radius: 16px;
+      outline:none; color: var(--text); box-shadow: 0 8px 20px rgba(62, 35, 20, .04);
+    }
+    .sheetHelp { color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .sheetStatus { margin-top: 12px; padding: 12px 14px; border-radius: 16px; background: rgba(255,255,255,.65); border: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+    .sheetStatus.okText { color: var(--green); background: rgba(47,125,79,.10); }
+    .sheetStatus.errorText { color: var(--red); background: rgba(184,59,48,.10); }
+    .codeBox { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: rgba(111,61,32,.08); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; overflow:auto; font-size: 12px; }
+    .sheetPreview { margin-top: 18px; }
+    .sheetPreviewFrame {
+      width: 100%;
+      height: 700px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 8px 20px rgba(62, 35, 20, .04);
+    }
+
+    @media (max-width: 1000px) {
+      .app { grid-template-columns: 1fr; }
+      aside { position:relative; height:auto; }
+      .sideFoot { position: static; margin-top:20px; }
+      main { padding: 20px; }
+      .topbar, .hero { grid-template-columns:1fr; display:grid; }
+      .charts, .charts3, .kpis { grid-template-columns: 1fr; }
+      .toolbar { justify-content:flex-start; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="logoBox">
+      <img id="companyLogo" alt="Logo da empresa">
+      <div id="logoPlaceholder" class="placeholder">ESPAÇO PARA LOGO<br>clique em “Inserir logo”</div>
+    </div>
+    <div class="logoActions">
+      <input id="logoInput" type="file" accept="image/*">
+    </div>
+    <h2 class="brandTitle">Folkafé Dashboard</h2>
+    <div class="subtitle">Cafés que tem rosto</div>
+    <nav class="nav">
+      <button class="active" data-page="inicio"><span>🏠 Página inicial</span><span></span></button>
+      <button data-page="financeiro"><span>💰 Financeiro</span><span></span></button>
+      <button data-page="estoque"><span>📦 Estoque</span><span></span></button>
+      <button data-page="movimentacao"><span>🔁 Movimentação</span><span></span></button>
+      <button data-page="sheets"><span>🔗 Banco de Dados</span><span></span></button>
+    </nav>
+    <div class="sideFoot">Atualizado em <strong id="generatedAt"></strong><br>Publicável em GitHub Pages, Netlify, Vercel ou SharePoint.</div>
+  </aside>
+
+  <main>
+    <section id="inicio" class="page active">
+      <div class="topbar">
+        <div>
+          <h1>Painel gerencial</h1>
+          <p class="lead">Visão rápida de estoque, vendas/movimentações e compromissos financeiros. Use os cards e gráficos para acompanhar produtos, entradas, saídas e dívidas abertas.</p>
+        </div>
+        <div class="toolbar">
+          <button class="exportBtn" onclick="window.print()">Imprimir / PDF</button>
+        </div>
+      </div>
+      <div class="hero">
+        <div class="card heroCard">
+          <h2>Controle integrado para decisões rápidas</h2>
+          <p>Dashboard criado a partir da sua planilha, com navegação por área, gráficos interativos e tabelas pesquisáveis.</p>
+          <div class="actions">
+            <button onclick="goPage('financeiro')">Abrir financeiro</button>
+            <button onclick="goPage('estoque')">Ver estoque</button>
+            <button onclick="goPage('movimentacao')">Ver movimentações</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Alertas de acompanhamento</h2>
+          <div id="healthList" class="healthList"></div>
+        </div>
+      </div>
+      <div class="grid kpis" id="homeKpis"></div>
+      <div class="grid charts">
+        <div class="card"><h2>Estoque por produto</h2><canvas id="homeStockChart"></canvas></div>
+        <div class="card"><h2>Composição de movimentações</h2><canvas id="homeMoveChart"></canvas></div>
+      </div>
+    </section>
+
+    <section id="financeiro" class="page">
+      <div class="topbar">
+        <div>
+          <h1>Financeiro</h1>
+          <p class="lead">Acompanhe dívidas, responsáveis, categorias e valores em aberto.</p>
+        </div>
+        <div class="toolbar">
+          <select class="filter" id="finStatus"></select>
+          <select class="filter" id="finResp"></select>
+          <input class="search" id="finSearch" placeholder="Buscar descrição, categoria...">
+        </div>
+      </div>
+      <div class="grid kpis" id="finKpis"></div>
+      <div class="grid charts">
+        <div class="card"><h2>Valores por categoria</h2><canvas id="finCatChart"></canvas></div>
+        <div class="card"><h2>Valores por responsável</h2><canvas id="finRespChart"></canvas></div>
+      </div>
+      <div class="card"><h2>Lançamentos financeiros</h2><div class="tableWrap"><table id="finTable"></table></div></div>
+    </section>
+
+    <section id="estoque" class="page">
+      <div class="topbar">
+        <div>
+          <h1>Estoque</h1>
+          <p class="lead">Consulte produtos, custo, preço, estoque mínimo, valor de estoque e status.</p>
+        </div>
+        <div class="toolbar">
+          <select class="filter" id="stockStatus"></select>
+          <select class="filter" id="stockCat"></select>
+          <input class="search" id="stockSearch" placeholder="Buscar código ou produto...">
+        </div>
+      </div>
+      <div class="grid kpis" id="stockKpis"></div>
+      <div class="grid charts3">
+        <div class="card"><h2>Quantidade em estoque</h2><canvas id="stockQtyChart"></canvas></div>
+        <div class="card"><h2>Valor em estoque</h2><canvas id="stockValueChart"></canvas></div>
+        <div class="card"><h2>Status dos itens</h2><canvas id="stockStatusChart"></canvas></div>
+      </div>
+      <div class="card"><h2>Produtos cadastrados</h2><div class="tableWrap"><table id="stockTable"></table></div></div>
+    </section>
+
+    <section id="movimentacao" class="page">
+      <div class="topbar">
+        <div>
+          <h1>Movimentação</h1>
+          <p class="lead">Analise entradas e saídas por produto, cliente/fornecedor e tipo de operação.</p>
+        </div>
+        <div class="toolbar">
+          <select class="filter" id="movTipo"></select>
+          <select class="filter" id="movProduto"></select>
+          <input class="search" id="movSearch" placeholder="Buscar cliente, fornecedor, observação...">
+        </div>
+      </div>
+      <div class="grid kpis" id="movKpis"></div>
+      <div class="grid charts">
+        <div class="card"><h2>Valor por produto</h2><canvas id="movProductChart"></canvas></div>
+        <div class="card"><h2>Entradas x Saídas</h2><canvas id="movTypeChart"></canvas></div>
+      </div>
+      <div class="card"><h2>Registro de movimentações</h2><div class="tableWrap"><table id="movTable"></table></div></div>
+    </section>
+
+    <section id="sheets" class="page">
+      <div class="topbar">
+        <div>
+          <h1>Google Sheets</h1>
+          <p class="lead">Cadastre os links das abas da sua planilha para o dashboard atualizar os dados direto do Google Sheets. Os links ficam salvos neste navegador.</p>
+        </div>
+        <div class="toolbar">
+          <button class="exportBtn" onclick="loadFromSheets(true)">Atualizar dados</button>
+          <button class="exportBtn" onclick="saveSheetConfig()">Salvar links</button>
+        </div>
+      </div>
+
+      <div class="grid charts">
+        <div class="card">
+          <h2>Links das abas</h2>
+          <div class="sheetForm">
+            <div class="sheetRow">
+              <label for="sheetFullUrl">Planilha publicada / visualização</label>
+              <input class="sheetInput" id="sheetFullUrl" value="https://docs.google.com/spreadsheets/d/e/2PACX-1vRdTQdTZ5snPUPKsc1xoz6x_TF3wrSadMtEjTyHbVU5y6PtE7YpD2RiS3qoE3tYV-aodWx20yTuDNmq/pubhtml?widget=true&headers=false" placeholder="Cole aqui o link publicado da planilha completa">
+              <div class="sheetHelp">Este campo mostra a planilha completa dentro do dashboard. Para alimentar os gráficos, use abaixo o link de cada aba com o gid correspondente.</div>
+            </div>
+            <div class="sheetRow">
+              <label for="sheetApiUrl">API do Google Apps Script (recomendado para planilhas com fórmulas)</label>
+              <input class="sheetInput" id="sheetApiUrl" placeholder="Cole aqui a URL do Web App do Apps Script, terminando em /exec">
+              <div class="sheetHelp">Use este campo quando a planilha tiver fórmulas, células calculadas, dados importados do Excel, células mescladas ou valores que aparecem na tela mas não chegam corretamente no dashboard.</div>
+            </div>
+            <div class="sheetRow">
+              <label for="sheetEstoqueUrl">Aba de estoque</label>
+              <input class="sheetInput" id="sheetEstoqueUrl" placeholder="Cole aqui o link da aba Estoque do Google Sheets com gid">
+              <div class="sheetHelp">Colunas esperadas: Código, Produto, Categoria, Un., Estoque Inicial, Entradas, Saídas, Estoque Atual, Mínimo, Custo Unit., Preço Venda, Valor Estoque, Status.</div>
+            </div>
+            <div class="sheetRow">
+              <label for="sheetMovUrl">Aba de movimentações</label>
+              <input class="sheetInput" id="sheetMovUrl" placeholder="Cole aqui o link da aba Movimentação do Google Sheets">
+              <div class="sheetHelp">Colunas esperadas: Data, Código, Produto, Fornecedor/Cliente, Tipo, Qtd., Valor Unit., Valor Total, Observação.</div>
+            </div>
+            <div class="sheetRow">
+              <label for="sheetFinUrl">Aba financeiro</label>
+              <input class="sheetInput" id="sheetFinUrl" placeholder="Cole aqui o link da aba Financeiro do Google Sheets">
+              <div class="sheetHelp">Colunas esperadas: Data, Vencimento, Tipo, Categoria, Descrição, Responsável, Status, Valor, Observação.</div>
+            </div>
+            <div class="actions" style="margin-top:4px">
+              <button onclick="saveSheetConfig()">Salvar links</button>
+              <button onclick="loadFromSheets(true)">Atualizar agora</button>
+              <button onclick="clearSheetConfig()">Voltar para dados de exemplo</button>
+            </div>
+            <div id="sheetStatus" class="sheetStatus">Nenhum link carregado ainda. Cole os links, salve e clique em “Atualizar agora”.</div>
+            <div class="sheetPreview">
+              <h2>Visualização da planilha publicada</h2>
+              <iframe id="sheetPreviewFrame" class="sheetPreviewFrame" src="" frameborder="0"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Como preparar o Google Sheets</h2>
+          <p class="lead" style="margin-top:0">Para o HTML conseguir ler os dados, publique a planilha ou deixe o arquivo acessível para quem tem o link.</p>
+          <div class="healthList">
+            <div class="healthItem"><div><strong>1. Crie 3 abas</strong><br><small>Use nomes como Estoque, Movimentação e Financeiro.</small></div></div>
+            <div class="healthItem"><div><strong>2. Mantenha os cabeçalhos</strong><br><small>Os nomes das colunas precisam bater com os campos listados ao lado.</small></div></div>
+            <div class="healthItem"><div><strong>3. Para planilhas simples</strong><br><small>Cole os links das abas com gid. O dashboard tentará ler direto.</small></div></div>
+            <div class="healthItem"><div><strong>4. Para planilhas com fórmulas</strong><br><small>Use a API do Google Apps Script. Ela lê os valores exibidos na tela com getDisplayValues().</small></div></div>
+          </div>
+          <p class="sheetHelp" style="margin-top:14px">O dashboard converte links do tipo:</p>
+          <div class="codeBox">Melhor opção para dados com fórmulas: cole a URL do Apps Script Web App no campo API.<br><br>Alternativa direta: use o link normal de cada aba, exemplo:<br>https://docs.google.com/spreadsheets/d/ID_DA_PLANILHA/edit#gid=123456789</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+let DATA = {"estoque": [{"Código": "P001", "Produto": "Café - Moído", "Categoria": "Café", "Un.": "G", "Estoque Inicial": 0, "Entradas": null, "Saídas": null, "Estoque Atual": 48, "Mínimo": 20, "Custo Unit.": 16.85, "Preço Venda": 30, "Valor Estoque": 808.8000000000001, "Status": "OK"}, {"Código": "P002", "Produto": "Café - Torra Média E", "Categoria": "Café", "Un.": "G", "Estoque Inicial": 0, "Entradas": null, "Saídas": null, "Estoque Atual": 55, "Mínimo": 20, "Custo Unit.": 16.85, "Preço Venda": 30, "Valor Estoque": 926.7500000000001, "Status": "OK"}, {"Código": "P003", "Produto": "Café - Torra Média", "Categoria": "Café", "Un.": "G", "Estoque Inicial": 0, "Entradas": null, "Saídas": null, "Estoque Atual": 30, "Mínimo": 20, "Custo Unit.": 16.85, "Preço Venda": 30, "Valor Estoque": 505.50000000000006, "Status": "OK"}], "movimentacoes": [{"Data": "2026-05-17", "Código": "P001", "Produto": "Café - Moído", "Fornecedor/Cliente": "Renato", "Tipo": "Entrada", "Qtd.": 68, "Valor Unit.": 30, "Valor Total": 2040, "Observação": null}, {"Data": "2026-05-17", "Código": "P002", "Produto": "Café - Torra Média E", "Fornecedor/Cliente": "Renato", "Tipo": "Entrada", "Qtd.": 55, "Valor Unit.": 30, "Valor Total": 1650, "Observação": null}, {"Data": "2026-05-17", "Código": "P003", "Produto": "Café - Torra Média", "Fornecedor/Cliente": "Renato", "Tipo": "Entrada", "Qtd.": 74, "Valor Unit.": 30, "Valor Total": 2220, "Observação": null}, {"Data": "2026-05-17", "Código": "P001", "Produto": "Café - Moído", "Fornecedor/Cliente": "Silas", "Tipo": "Saída", "Qtd.": 9, "Valor Unit.": 30, "Valor Total": 270, "Observação": "Venda"}, {"Data": "2026-05-17", "Código": "P003", "Produto": "Café - Torra Média", "Fornecedor/Cliente": "Silas", "Tipo": "Saída", "Qtd.": 24, "Valor Unit.": 30, "Valor Total": 720, "Observação": "Venda"}, {"Data": "2026-05-17", "Código": "P001", "Produto": "Café - Moído", "Fornecedor/Cliente": "Cássio", "Tipo": "Saída", "Qtd.": 9, "Valor Unit.": 30, "Valor Total": 270, "Observação": "Venda"}, {"Data": "2026-05-17", "Código": "P003", "Produto": "Café - Torra Média", "Fornecedor/Cliente": "Cássio", "Tipo": "Saída", "Qtd.": 15, "Valor Unit.": 30, "Valor Total": 450, "Observação": "Venda"}, {"Data": "2026-05-17", "Código": "P001", "Produto": "Café - Moído", "Fornecedor/Cliente": "Emporial Largatos", "Tipo": "Saída", "Qtd.": 2, "Valor Unit.": 30, "Valor Total": 60, "Observação": "Venda"}, {"Data": "2026-05-17", "Código": "P003", "Produto": "Café - Torra Média", "Fornecedor/Cliente": "Emporial Largatos", "Tipo": "Saída", "Qtd.": 5, "Valor Unit.": 30, "Valor Total": 150, "Observação": "Venda"}], "financas": [{"Data": "2026-05-17", "Vencimento": null, "Tipo": "Dívida", "Categoria": "Insumo", "Descrição": "Embalagens ", "Responsável": "Matheus", "Status": "Aberto", "Valor": 595, "Observação": null}, {"Data": "2026-05-17", "Vencimento": null, "Tipo": "Dívida", "Categoria": "Máteria Prima", "Descrição": "Saca de Cafá - 60kg", "Responsável": "Renato", "Status": "Aberto", "Valor": 2000, "Observação": null}, {"Data": "2026-05-17", "Vencimento": null, "Tipo": "Dívida", "Categoria": "Insumo", "Descrição": "Aluguel do Torrador", "Responsável": "Renato", "Status": "Aberto", "Valor": 200, "Observação": null}, {"Data": "2026-05-17", "Vencimento": null, "Tipo": "Dívida", "Categoria": "Insumo", "Descrição": "Carinbo e Adesivos", "Responsável": "Silas", "Status": "Aberto", "Valor": 687, "Observação": null}], "generatedAt": "2026-05-21 13:13"};
+const BRL = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' });
+const NUM = new Intl.NumberFormat('pt-BR');
+const charts = {};
+
+const n = v => Number(v || 0);
+const sum = (arr, fn) => arr.reduce((a,x)=>a+n(fn(x)),0);
+const uniq = arr => [...new Set(arr.filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'pt-BR'));
+const by = (arr, key, valKey) => arr.reduce((acc, r)=>{ const k=r[key] || 'Não informado'; acc[k]=(acc[k]||0)+n(r[valKey]); return acc; }, {});
+const money = v => BRL.format(n(v));
+function parseDateValue(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (v instanceof Date && !isNaN(v)) return v;
+  const s = String(v).trim();
+
+  // Formato brasileiro: 17/05/2026 ou 17/05/2026 14:30
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+.*)?$/);
+  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+
+  // Formato ISO simples: 2026-05-17
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+
+  // Formato ISO com hora: 2026-05-17T03:00:00.000Z
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})T/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+
+  // Formato Google Visualization: Date(2026,4,17) - mês começa em zero
+  m = s.match(/^Date\((\d{4}),(\d{1,2}),(\d{1,2})\)$/);
+  if (m) return new Date(Number(m[1]), Number(m[2]), Number(m[3]));
+
+  const parsed = new Date(s);
+  return isNaN(parsed) ? null : parsed;
+}
+const fmtDate = d => {
+  const date = parseDateValue(d);
+  return date ? date.toLocaleDateString('pt-BR') : (d || '');
+};
+
+function setOptions(id, values, allLabel='Todos') {
+  const el = document.getElementById(id);
+  el.innerHTML = `<option value="">${allLabel}</option>` + values.map(v=>`<option>${v}</option>`).join('');
+}
+function card(label, value, hint='') {
+  return `<div class="card kpi"><div class="label">${label}</div><div class="value">${value}</div><div class="hint">${hint}</div></div>`;
+}
+function badge(text) {
+  const t = String(text || '').toLowerCase();
+  const cls = t.includes('ok') || t.includes('receb') || t.includes('pago') ? 'ok' : (t.includes('aberto') || t.includes('repor') ? 'danger' : 'warn');
+  return `<span class="badge ${cls}">${text || '—'}</span>`;
+}
+function renderTable(id, rows, cols) {
+  const table = document.getElementById(id);
+  table.innerHTML = `<thead><tr>${cols.map(c=>`<th>${c.label}</th>`).join('')}</tr></thead>` +
+    `<tbody>${rows.map(r=>`<tr>${cols.map(c=>`<td>${c.f ? c.f(r[c.key], r) : (r[c.key] ?? '')}</td>`).join('')}</tr>`).join('')}</tbody>`;
+}
+function chart(id, type, labels, values, title='') {
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(ctx, {
+    type,
+    data: { labels, datasets: [{ label: title, data: values, borderWidth: 2, tension: .35 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: type === 'doughnut' || type === 'pie' }, tooltip: { callbacks: { label: c => `${c.label}: ${typeof c.raw === 'number' && title.toLowerCase().includes('valor') ? money(c.raw) : NUM.format(c.raw)}` } } },
+      scales: type === 'doughnut' || type === 'pie' ? {} : { y: { beginAtZero:true } }
+    }
+  });
+}
+function groupChart(id, type, obj, title) {
+  chart(id, type, Object.keys(obj), Object.values(obj), title);
+}
+function filterText(row, q) {
+  if (!q) return true;
+  q = q.toLowerCase();
+  return Object.values(row).some(v => String(v ?? '').toLowerCase().includes(q));
+}
+function goPage(page) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active', p.id===page));
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active', b.dataset.page===page));
+  setTimeout(()=>Object.values(charts).forEach(c=>c.resize()), 80);
+}
+document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>goPage(b.dataset.page)));
+
+function renderHome() {
+  const estoque = DATA.estoque, mov = DATA.movimentacoes, fin = DATA.financas;
+  const stockValue = sum(estoque, r=>r['Valor Estoque']);
+  const stockQty = sum(estoque, r=>r['Estoque Atual']);
+  const entradas = mov.filter(r=>r.Tipo==='Entrada');
+  const saidas = mov.filter(r=>r.Tipo==='Saída');
+  const dividasAbertas = fin.filter(r=>String(r.Status).toLowerCase()==='aberto');
+  document.getElementById('homeKpis').innerHTML = [
+    card('Produtos cadastrados', estoque.length, 'Itens ativos na base'),
+    card('Qtd. total em estoque', NUM.format(stockQty), 'Soma do estoque atual'),
+    card('Valor total do estoque', money(stockValue), 'custo x quantidade'),
+    card('Dívidas em aberto', money(sum(dividasAbertas, r=>r.Valor)), `${dividasAbertas.length} lançamento(s)`)
+  ].join('');
+  const health = [
+    ['Reposição', estoque.filter(r=>n(r['Estoque Atual']) <= n(r['Mínimo'])).length, estoque.length, 'itens no mínimo ou abaixo'],
+    ['Saídas registradas', saidas.length, mov.length, 'movimentações de venda/baixa'],
+    ['Dívidas abertas', dividasAbertas.length, Math.max(fin.length,1), 'lançamentos pendentes']
+  ];
+  document.getElementById('healthList').innerHTML = health.map(([name, val, total, hint]) => {
+    const pct = Math.min(100, Math.round((val/Math.max(total,1))*100));
+    return `<div class="healthItem"><div><strong>${name}</strong><br><small>${val} de ${total} ${hint}</small></div><div class="bar"><span style="width:${pct}%"></span></div></div>`;
+  }).join('');
+  chart('homeStockChart', 'bar', estoque.map(r=>r.Produto), estoque.map(r=>n(r['Estoque Atual'])), 'Quantidade');
+  groupChart('homeMoveChart', 'doughnut', by(mov, 'Tipo', 'Valor Total'), 'Valor por tipo');
+}
+
+function renderFinanceiro() {
+  const status = document.getElementById('finStatus').value;
+  const resp = document.getElementById('finResp').value;
+  const q = document.getElementById('finSearch').value;
+  const rows = DATA.financas.filter(r=>(!status||r.Status===status)&&(!resp||r.Responsável===resp)&&filterText(r,q));
+  const aberto = rows.filter(r=>String(r.Status).toLowerCase()==='aberto');
+  const pago = rows.filter(r=>String(r.Status).toLowerCase()==='pago' || String(r.Status).toLowerCase()==='recebido');
+  document.getElementById('finKpis').innerHTML = [
+    card('Total filtrado', money(sum(rows, r=>r.Valor)), `${rows.length} lançamento(s)`),
+    card('Em aberto', money(sum(aberto, r=>r.Valor)), `${aberto.length} pendência(s)`),
+    card('Pago/recebido', money(sum(pago, r=>r.Valor)), `${pago.length} finalizado(s)`),
+    card('Ticket médio', money(rows.length ? sum(rows, r=>r.Valor)/rows.length : 0), 'valor médio por lançamento')
+  ].join('');
+  groupChart('finCatChart', 'bar', by(rows, 'Categoria', 'Valor'), 'Valor por categoria');
+  groupChart('finRespChart', 'doughnut', by(rows, 'Responsável', 'Valor'), 'Valor por responsável');
+  renderTable('finTable', rows, [
+    {key:'Data', label:'Data', f:fmtDate}, {key:'Vencimento', label:'Vencimento', f:fmtDate},
+    {key:'Tipo', label:'Tipo'}, {key:'Categoria', label:'Categoria'}, {key:'Descrição', label:'Descrição'},
+    {key:'Responsável', label:'Responsável'}, {key:'Status', label:'Status', f:badge}, {key:'Valor', label:'Valor', f:money}, {key:'Observação', label:'Observação'}
+  ]);
+}
+
+function renderEstoque() {
+  const status = document.getElementById('stockStatus').value;
+  const cat = document.getElementById('stockCat').value;
+  const q = document.getElementById('stockSearch').value;
+  const rows = DATA.estoque.filter(r=>(!status||r.Status===status)&&(!cat||r.Categoria===cat)&&filterText(r,q));
+  const repor = rows.filter(r=>n(r['Estoque Atual']) <= n(r['Mínimo']));
+  document.getElementById('stockKpis').innerHTML = [
+    card('Produtos', rows.length, 'itens filtrados'),
+    card('Estoque atual', NUM.format(sum(rows, r=>r['Estoque Atual'])), 'quantidade total'),
+    card('Valor de estoque', money(sum(rows, r=>r['Valor Estoque'])), 'venda x quantidade'),
+    card('Itens para repor', repor.length, 'estoque atual <= mínimo')
+  ].join('');
+  chart('stockQtyChart', 'bar', rows.map(r=>r.Produto), rows.map(r=>n(r['Estoque Atual'])), 'Quantidade');
+  chart('stockValueChart', 'bar', rows.map(r=>r.Produto), rows.map(r=>n(r['Valor Estoque'])), 'Valor');
+  groupChart('stockStatusChart', 'doughnut', rows.reduce((a,r)=>{a[r.Status||'Sem status']=(a[r.Status||'Sem status']||0)+1; return a;},{}), 'Itens');
+  renderTable('stockTable', rows, [
+    {key:'Código', label:'Código'}, {key:'Produto', label:'Produto'}, {key:'Categoria', label:'Categoria'}, {key:'Un.', label:'Un.'},
+    {key:'Estoque Atual', label:'Atual', f:v=>NUM.format(n(v))}, {key:'Mínimo', label:'Mínimo', f:v=>NUM.format(n(v))},
+    {key:'Custo Unit.', label:'Custo', f:money}, {key:'Preço Venda', label:'Venda', f:money}, {key:'Valor Estoque', label:'Valor Estoque', f:money},
+    {key:'Status', label:'Status', f:badge}
+  ]);
+}
+
+function renderMov() {
+  const tipo = document.getElementById('movTipo').value;
+  const prod = document.getElementById('movProduto').value;
+  const q = document.getElementById('movSearch').value;
+  const rows = DATA.movimentacoes.filter(r=>(!tipo||r.Tipo===tipo)&&(!prod||r.Produto===prod)&&filterText(r,q));
+  const entradas = rows.filter(r=>r.Tipo==='Entrada');
+  const saidas = rows.filter(r=>r.Tipo==='Saída');
+  document.getElementById('movKpis').innerHTML = [
+    card('Valor de entradas', money(sum(entradas, r=>r['Valor Total'])), `${sum(entradas, r=>r['Qtd.'])} unidades`),
+    card('Valor de saídas', money(sum(saidas, r=>r['Valor Total'])), `${sum(saidas, r=>r['Qtd.'])} unidades`),
+    card('Saldo operacional', money(sum(entradas, r=>r['Valor Total']) - sum(saidas, r=>r['Valor Total'])), 'entradas - saídas'),
+    card('Registros', rows.length, 'movimentações filtradas')
+  ].join('');
+  groupChart('movProductChart', 'bar', by(rows, 'Produto', 'Valor Total'), 'Valor por produto');
+  groupChart('movTypeChart', 'doughnut', by(rows, 'Tipo', 'Valor Total'), 'Valor por tipo');
+  renderTable('movTable', rows, [
+    {key:'Data', label:'Data', f:fmtDate}, {key:'Código', label:'Código'}, {key:'Produto', label:'Produto'},
+    {key:'Fornecedor/Cliente', label:'Fornecedor/Cliente'}, {key:'Tipo', label:'Tipo', f:v=>`<span class="${v==='Entrada'?'income':'outcome'}">${v}</span>`},
+    {key:'Qtd.', label:'Qtd.', f:v=>NUM.format(n(v))}, {key:'Valor Unit.', label:'Valor Unit.', f:money},
+    {key:'Valor Total', label:'Valor Total', f:money}, {key:'Observação', label:'Observação'}
+  ]);
+}
+
+
+const SHEET_CONFIG_KEY = 'folkafeSheetConfig_v2';
+const EXAMPLE_DATA = JSON.parse(JSON.stringify(DATA));
+let listenersAttached = false;
+
+function setSheetStatus(msg, type='') {
+  const el = document.getElementById('sheetStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'sheetStatus' + (type ? ` ${type}` : '');
+}
+function normalizeSheetPreviewUrl(url) {
+  if (!url) return '';
+  let clean = url.trim();
+  if (clean.includes('/pubhtml') && !clean.includes('widget=true')) {
+    clean += clean.includes('?') ? '&widget=true&headers=false' : '?widget=true&headers=false';
+  }
+  return clean;
+}
+function updateSheetPreview() {
+  const iframe = document.getElementById('sheetPreviewFrame');
+  const input = document.getElementById('sheetFullUrl');
+  if (!iframe || !input) return;
+  iframe.src = normalizeSheetPreviewUrl(input.value);
+}
+function getSheetConfig() {
+  return {
+    planilha: document.getElementById('sheetFullUrl')?.value.trim() || '',
+    api: document.getElementById('sheetApiUrl')?.value.trim() || '',
+    estoque: document.getElementById('sheetEstoqueUrl')?.value.trim() || '',
+    movimentacoes: document.getElementById('sheetMovUrl')?.value.trim() || '',
+    financas: document.getElementById('sheetFinUrl')?.value.trim() || ''
+  };
+}
+function fillSheetConfig() {
+  const cfg = JSON.parse(localStorage.getItem(SHEET_CONFIG_KEY) || '{}');
+  const defaultFullUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRdTQdTZ5snPUPKsc1xoz6x_TF3wrSadMtEjTyHbVU5y6PtE7YpD2RiS3qoE3tYV-aodWx20yTuDNmq/pubhtml?widget=true&headers=false';
+  if (document.getElementById('sheetFullUrl')) document.getElementById('sheetFullUrl').value = cfg.planilha || defaultFullUrl;
+  if (document.getElementById('sheetApiUrl')) document.getElementById('sheetApiUrl').value = cfg.api || '';
+  if (document.getElementById('sheetEstoqueUrl')) document.getElementById('sheetEstoqueUrl').value = cfg.estoque || DEFAULT_SHEET_LINKS.estoque;
+  if (document.getElementById('sheetMovUrl')) document.getElementById('sheetMovUrl').value = cfg.movimentacoes || DEFAULT_SHEET_LINKS.movimentacoes;
+  if (document.getElementById('sheetFinUrl')) document.getElementById('sheetFinUrl').value = cfg.financas || DEFAULT_SHEET_LINKS.financas;
+  updateSheetPreview();
+}
+function saveSheetConfig() {
+  const cfg = getSheetConfig();
+  localStorage.setItem(SHEET_CONFIG_KEY, JSON.stringify(cfg));
+  updateSheetPreview();
+  setSheetStatus('Links salvos. Clique em “Atualizar dados” para buscar as informações do Google Sheets.', 'okText');
+}
+function clearSheetConfig() {
+  localStorage.removeItem(SHEET_CONFIG_KEY);
+  fillSheetConfig();
+  DATA = JSON.parse(JSON.stringify(EXAMPLE_DATA));
+  DATA.generatedAt = new Date().toLocaleString('pt-BR');
+  refreshDashboard();
+  setSheetStatus('Configuração apagada. O dashboard voltou para os dados de exemplo.', 'okText');
+}
+function googleSheetInfo(url) {
+  if (!url) return null;
+  const clean = url.trim();
+  const gidMatch = clean.match(/[?&#]gid=([0-9]+)/);
+  const gid = gidMatch ? gidMatch[1] : '';
+
+  if (clean.includes('/spreadsheets/d/e/')) {
+    throw new Error('Para atualizar os gráficos, use o link NORMAL da aba, no formato /spreadsheets/d/ID/edit#gid=NUMERO_DA_ABA. O link publicado /d/e/.../pubhtml serve apenas para visualização no iframe.');
+  }
+
+  const idMatch = clean.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+  if (!idMatch) throw new Error('Link inválido do Google Sheets. Cole o link normal da aba, com /spreadsheets/d/ID/edit#gid=NUMERO_DA_ABA.');
+  if (!gid) throw new Error('O link da aba precisa conter gid. Clique na aba correta no Google Sheets e copie a URL da barra do navegador, terminando em #gid=NUMERO_DA_ABA.');
+  return { id: idMatch[1], gid };
+}
+
+const DEFAULT_SHEET_LINKS = {
+  estoque: 'https://docs.google.com/spreadsheets/d/1IOZZWdxdvkuMn1D7tg_RBjP24Sh78MHRx_1TuVNrss0/edit?gid=1994135697#gid=1994135697',
+  movimentacoes: 'https://docs.google.com/spreadsheets/d/1IOZZWdxdvkuMn1D7tg_RBjP24Sh78MHRx_1TuVNrss0/edit?gid=258263239#gid=258263239',
+  financas: 'https://docs.google.com/spreadsheets/d/1IOZZWdxdvkuMn1D7tg_RBjP24Sh78MHRx_1TuVNrss0/edit?gid=709916506#gid=709916506'
+};
+
+const EXPECTED_BY_SHEET = {
+  estoque: ['Código','Produto','Categoria','Un.','Estoque Inicial','Entradas','Saídas','Estoque Atual','Mínimo','Custo Unit.','Preço Venda','Valor Estoque','Status'],
+  movimentacoes: ['Data','Código','Produto','Fornecedor/Cliente','Tipo','Qtd.','Valor Unit.','Valor Total','Observação'],
+  financas: ['Data','Vencimento','Tipo','Categoria','Descrição','Responsável','Status','Valor','Observação']
+};
+
+const GOOGLE_COLUMNS_BY_SHEET = {
+  estoque: ['A','B','C','D','E','F','G','H','I','J','K','L','M'],
+  movimentacoes: ['A','B','C','D','E','F','G','H','I'],
+  financas: ['A','B','C','D','E','F','G','H','I']
+};
+
+const HEADER_ALIASES = {
+  codigo: 'Código', cod: 'Código', sku: 'Código', id: 'Código',
+  produto: 'Produto', item: 'Produto', descricaoitem: 'Produto',
+  categoria: 'Categoria', grupo: 'Categoria',
+  un: 'Un.', und: 'Un.', unidade: 'Un.', unidadeMedida: 'Un.', unidademedida: 'Un.',
+  estoqueinicial: 'Estoque Inicial', inicial: 'Estoque Inicial', qtdinicial: 'Estoque Inicial', quantidadeinicial: 'Estoque Inicial',
+  entradas: 'Entradas', entrada: 'Entradas', qtdentrada: 'Entradas', quantidadeentrada: 'Entradas',
+  saidas: 'Saídas', saida: 'Saídas', saidas2: 'Saídas', qtdsaida: 'Saídas', quantidadesaida: 'Saídas',
+  estoqueatual: 'Estoque Atual', atual: 'Estoque Atual', saldo: 'Estoque Atual', quantidadeatual: 'Estoque Atual', qtdatual: 'Estoque Atual',
+  minimo: 'Mínimo', min: 'Mínimo', estoqueminimo: 'Mínimo', estoqueMinimo: 'Mínimo',
+  custounit: 'Custo Unit.', custounitario: 'Custo Unit.', custo: 'Custo Unit.', valorcusto: 'Custo Unit.',
+  precovenda: 'Preço Venda', precoVenda: 'Preço Venda', preco: 'Preço Venda', venda: 'Preço Venda', valorvenda: 'Preço Venda',
+  valorestoque: 'Valor Estoque', totalestoque: 'Valor Estoque', valorTotalEstoque: 'Valor Estoque',
+  status: 'Status', situacao: 'Status', situação: 'Status',
+  data: 'Data', dt: 'Data', emissao: 'Data', emissão: 'Data',
+  vencimento: 'Vencimento', datavencimento: 'Vencimento', venc: 'Vencimento',
+  tipo: 'Tipo', operacao: 'Tipo', operação: 'Tipo', movimento: 'Tipo',
+  fornecedorcliente: 'Fornecedor/Cliente', clientefornecedor: 'Fornecedor/Cliente', fornecedor: 'Fornecedor/Cliente', cliente: 'Fornecedor/Cliente', nome: 'Fornecedor/Cliente',
+  qtd: 'Qtd.', qtde: 'Qtd.', quantidade: 'Qtd.', quant: 'Qtd.',
+  valorunit: 'Valor Unit.', valorunitario: 'Valor Unit.', unitario: 'Valor Unit.', precoUnitario: 'Valor Unit.', precounitario: 'Valor Unit.',
+  valortotal: 'Valor Total', total: 'Valor Total', valorfinal: 'Valor Total',
+  observacao: 'Observação', observacoes: 'Observação', obs: 'Observação', observação: 'Observação', observações: 'Observação',
+  descricao: 'Descrição', descrição: 'Descrição', historico: 'Descrição', histórico: 'Descrição',
+  responsavel: 'Responsável', responsável: 'Responsável', responsaveis: 'Responsável', responsaveis2: 'Responsável',
+  valor: 'Valor'
+};
+
+function normalizeHeaderName(value) {
+  return String(value ?? '')
+    .trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toLowerCase();
+}
+function isGenericHeader(h, index) {
+  const s = String(h || '').trim();
+  return !s || /^coluna\s*\d+$/i.test(s) || /^[A-Z]+$/i.test(s) || s === String(index + 1);
+}
+function canonicalHeader(header, sheetKey='') {
+  const norm = normalizeHeaderName(header);
+  const expected = EXPECTED_BY_SHEET[sheetKey] || [];
+  const exact = expected.find(h => normalizeHeaderName(h) === norm);
+  if (exact) return exact;
+  if (HEADER_ALIASES[norm]) {
+    // Em estoque, "Preço" normalmente é preço de venda; em movimentação, normalmente é valor unitário.
+    if (norm === 'preco' && sheetKey === 'movimentacoes') return 'Valor Unit.';
+    if (norm === 'total' && sheetKey === 'financas') return 'Valor';
+    return HEADER_ALIASES[norm];
+  }
+  return String(header || '').trim();
+}
+function headerScore(headers, sheetKey) {
+  const expected = EXPECTED_BY_SHEET[sheetKey] || [];
+  const expectedNorm = new Set(expected.map(normalizeHeaderName));
+  return headers.reduce((score, h, i) => {
+    const canonical = canonicalHeader(h, sheetKey);
+    const norm = normalizeHeaderName(canonical);
+    return score + (expectedNorm.has(norm) ? 1 : 0) - (isGenericHeader(h, i) ? 0.25 : 0);
+  }, 0);
+}
+function toIsoDate(v) {
+  const date = parseDateValue(v);
+  if (!date) return String(v || '').trim();
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+function normalizeValue(key, value) {
+  if (value instanceof Date && !isNaN(value)) return toIsoDate(value);
+  const raw = String(value ?? '').trim();
+  if (raw === '') return null;
+  if (/data|vencimento/i.test(key)) return toIsoDate(value);
+  const cleaned = raw.replace(/^R\$\s*/i, '').replace(/\s/g, '');
+  if (/^-?\d{1,3}(\.\d{3})*,\d+$/.test(cleaned)) return Number(cleaned.replace(/\./g, '').replace(',', '.'));
+  if (/^-?\d+,\d+$/.test(cleaned)) return Number(cleaned.replace(',', '.'));
+  if (/^-?\d+(\.\d+)?$/.test(cleaned)) return Number(cleaned);
+  return raw;
+}
+function gvizCellValue(cell) {
+  if (!cell) return null;
+  return cell.f ?? cell.v ?? null;
+}
+function gvizTableToObjects(table, sheetKey='') {
+  if (!table || !table.rows) return [];
+
+  const expected = EXPECTED_BY_SHEET[sheetKey] || [];
+  const matrix = table.rows.map(row => {
+    const cells = row.c || [];
+    const width = expected.length || Math.max(cells.length, table.cols ? table.cols.length : 0);
+    return Array.from({ length: width }, (_, i) => gvizCellValue(cells[i]));
+  });
+
+  // Nesta versão, a consulta ao Google força as letras das colunas (A, B, C...).
+  // Assim, mesmo que o Google tente ignorar cabeçalhos, misture tipos ou esconda colunas,
+  // a posição da coluna continua sendo a referência principal.
+  let headerRowIndex = -1;
+  const maxScan = Math.min(matrix.length, 12);
+  for (let r = 0; r < maxScan; r++) {
+    const score = headerScore(matrix[r].map(v => String(v ?? '').trim()), sheetKey);
+    if (score >= Math.max(2, Math.ceil((expected.length || 1) * 0.35))) {
+      headerRowIndex = r;
+      break;
+    }
+  }
+
+  const startRow = headerRowIndex >= 0 ? headerRowIndex + 1 : 0;
+  const canonicalHeaders = expected.length
+    ? expected.slice()
+    : (table.cols || []).map((col, i) => canonicalHeader(col.label || col.id || `Coluna ${i+1}`, sheetKey));
+
+  const objects = matrix.slice(startRow).map(row => {
+    const obj = {};
+    canonicalHeaders.forEach((h, i) => {
+      if (!h || isGenericHeader(h, i)) return;
+      obj[h] = normalizeValue(h, row[i]);
+    });
+    return obj;
+  }).filter(obj => Object.values(obj).some(v => v !== null && v !== ''));
+
+  // Complementos calculados para evitar campos essenciais vazios quando a planilha usa fórmula
+  // ainda não calculada/publicada, células vazias ou quando o Google retorna valores parciais.
+  objects.forEach(obj => {
+    if (sheetKey === 'estoque') {
+      const entradas = n(obj['Entradas']);
+      const saidas = n(obj['Saídas']);
+      const inicial = n(obj['Estoque Inicial']);
+      if (obj['Estoque Atual'] == null && (inicial || entradas || saidas)) obj['Estoque Atual'] = inicial + entradas - saidas;
+      if (obj['Valor Estoque'] == null && obj['Estoque Atual'] != null && obj['Custo Unit.'] != null) obj['Valor Estoque'] = n(obj['Estoque Atual']) * n(obj['Custo Unit.']);
+      if (!obj['Status'] && obj['Estoque Atual'] != null && obj['Mínimo'] != null) obj['Status'] = n(obj['Estoque Atual']) <= n(obj['Mínimo']) ? 'Repor' : 'OK';
+    }
+    if (sheetKey === 'movimentacoes') {
+      if (obj['Valor Total'] == null && obj['Qtd.'] != null && obj['Valor Unit.'] != null) obj['Valor Total'] = n(obj['Qtd.']) * n(obj['Valor Unit.']);
+    }
+  });
+
+  const importedHeaders = canonicalHeaders.filter((h, i) => h && !isGenericHeader(h, i));
+  const missingWithValues = importedHeaders.filter(h => objects.some(obj => obj[h] !== null && obj[h] !== undefined && obj[h] !== ''));
+  const withoutValues = importedHeaders.filter(h => !missingWithValues.includes(h));
+  objects._importInfo = {
+    linhas: objects.length,
+    cabecalhos: importedHeaders.join(', '),
+    semDados: withoutValues.join(', '),
+    linhaCabecalho: headerRowIndex >= 0 ? headerRowIndex + 1 : 'não detectada; usando linha 1 como dados',
+    modo: 'colunas forçadas por letra'
+  };
+  return objects;
+}
+function fetchSheetRows(url, sheetKey='') {
+  const info = googleSheetInfo(url);
+  return new Promise((resolve, reject) => {
+    const callbackName = `folkafeSheetCallback_${Date.now()}_${Math.floor(Math.random()*100000)}`;
+    const script = document.createElement('script');
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('Tempo esgotado ao tentar ler a aba. Confirme se a planilha está compartilhada como Qualquer pessoa com o link - Leitor.'));
+    }, 20000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[callbackName] = response => {
+      cleanup();
+      if (!response || response.status === 'error') {
+        const msg = response && response.errors && response.errors[0] ? response.errors[0].detailed_message || response.errors[0].message : 'Resposta inválida do Google Sheets.';
+        reject(new Error(msg));
+        return;
+      }
+      resolve(gvizTableToObjects(response.table, sheetKey));
+    };
+
+    script.onerror = () => {
+      cleanup();
+      reject(new Error('O navegador não conseguiu carregar o script do Google Sheets. Teste hospedar o arquivo em GitHub Pages, Netlify ou Vercel, e confirme o compartilhamento público.'));
+    };
+
+    const cols = GOOGLE_COLUMNS_BY_SHEET[sheetKey] || [];
+    const query = cols.length ? `select ${cols.join(',')}` : 'select *';
+    const tq = encodeURIComponent(query);
+    // headers=0 mantém a primeira linha como dado. Depois o dashboard detecta e pula
+    // a linha de cabeçalho internamente. Isso evita o Google descartar colunas de texto/moeda/data.
+    script.src = `https://docs.google.com/spreadsheets/d/${info.id}/gviz/tq?gid=${info.gid}&headers=0&tq=${tq}&tqx=responseHandler:${callbackName}`;
+    document.body.appendChild(script);
+  });
+}
+
+function normalizeRowsFromApi(rows, sheetKey='') {
+  const expected = EXPECTED_BY_SHEET[sheetKey] || [];
+  if (!Array.isArray(rows)) return [];
+  const objects = rows.map(row => {
+    const obj = {};
+    if (Array.isArray(row)) {
+      expected.forEach((h, i) => obj[h] = normalizeValue(h, row[i]));
+    } else if (row && typeof row === 'object') {
+      expected.forEach(h => {
+        const direct = row[h];
+        if (direct !== undefined) obj[h] = normalizeValue(h, direct);
+      });
+      Object.keys(row || {}).forEach(k => {
+        const ck = canonicalHeader(k, sheetKey);
+        if (expected.includes(ck) && obj[ck] == null) obj[ck] = normalizeValue(ck, row[k]);
+      });
+    }
+    return obj;
+  }).filter(obj => Object.values(obj).some(v => v !== null && v !== undefined && v !== ''));
+
+  objects.forEach(obj => {
+    if (sheetKey === 'estoque') {
+      const entradas = n(obj['Entradas']);
+      const saidas = n(obj['Saídas']);
+      const inicial = n(obj['Estoque Inicial']);
+      if (obj['Estoque Atual'] == null && (inicial || entradas || saidas)) obj['Estoque Atual'] = inicial + entradas - saidas;
+      if (obj['Valor Estoque'] == null && obj['Estoque Atual'] != null && obj['Custo Unit.'] != null) obj['Valor Estoque'] = n(obj['Estoque Atual']) * n(obj['Custo Unit.']);
+      if (!obj['Status'] && obj['Estoque Atual'] != null && obj['Mínimo'] != null) obj['Status'] = n(obj['Estoque Atual']) <= n(obj['Mínimo']) ? 'Repor' : 'OK';
+    }
+    if (sheetKey === 'movimentacoes') {
+      if (obj['Valor Total'] == null && obj['Qtd.'] != null && obj['Valor Unit.'] != null) obj['Valor Total'] = n(obj['Qtd.']) * n(obj['Valor Unit.']);
+    }
+  });
+  objects._importInfo = {
+    linhas: objects.length,
+    cabecalhos: expected.join(', '),
+    modo: 'Apps Script getDisplayValues',
+    semDados: expected.filter(h => !objects.some(obj => obj[h] !== null && obj[h] !== undefined && obj[h] !== '')).join(', ')
+  };
+  return objects;
+}
+
+function fetchFromAppsScript(apiUrl) {
+  if (!apiUrl) return Promise.reject(new Error('URL do Apps Script vazia.'));
+  return new Promise((resolve, reject) => {
+    const callbackName = `folkafeAppsCallback_${Date.now()}_${Math.floor(Math.random()*100000)}`;
+    const script = document.createElement('script');
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('Tempo esgotado ao ler o Apps Script. Confira se o Web App está implantado como Qualquer pessoa.'));
+    }, 25000);
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+    window[callbackName] = payload => {
+      cleanup();
+      if (!payload || payload.ok === false) {
+        reject(new Error(payload && payload.error ? payload.error : 'Resposta inválida do Apps Script.'));
+        return;
+      }
+      resolve({
+        estoque: normalizeRowsFromApi(payload.estoque || [], 'estoque'),
+        movimentacoes: normalizeRowsFromApi(payload.movimentacoes || [], 'movimentacoes'),
+        financas: normalizeRowsFromApi(payload.financas || [], 'financas')
+      });
+    };
+    script.onerror = () => {
+      cleanup();
+      reject(new Error('Não foi possível carregar a API do Apps Script. Verifique se a URL termina em /exec e se o acesso está como Qualquer pessoa.'));
+    };
+    const sep = apiUrl.includes('?') ? '&' : '?';
+    script.src = `${apiUrl}${sep}callback=${encodeURIComponent(callbackName)}&_=${Date.now()}`;
+    document.body.appendChild(script);
+  });
+}
+
+async function loadFromSheets(showMessage=false) {
+  const cfg = getSheetConfig();
+  localStorage.setItem(SHEET_CONFIG_KEY, JSON.stringify(cfg));
+  updateSheetPreview();
+  try {
+    setSheetStatus('Buscando dados do Google Sheets...');
+    const next = JSON.parse(JSON.stringify(DATA));
+    const importInfos = [];
+
+    if (cfg.api) {
+      const apiData = await fetchFromAppsScript(cfg.api);
+      ['estoque','movimentacoes','financas'].forEach(key => {
+        next[key] = apiData[key] || [];
+        const info = next[key]._importInfo;
+        if (info) importInfos.push(`${key}: ${info.linhas} linha(s); modo: ${info.modo}; colunas: ${info.cabecalhos}${info.semDados ? '; sem dados recebidos em: ' + info.semDados : ''}`);
+      });
+    } else {
+      const active = Object.entries(cfg).filter(([key,url]) => !['planilha','api'].includes(key) && url);
+      if (!active.length) {
+        setSheetStatus('Cole a URL do Apps Script ou pelo menos um link de aba do Google Sheets antes de atualizar.', 'errorText');
+        return;
+      }
+      for (const [key, url] of active) {
+        const rows = await fetchSheetRows(url, key);
+        next[key] = rows;
+        if (rows._importInfo) importInfos.push(`${key}: ${rows._importInfo.linhas} linha(s); modo: ${rows._importInfo.modo || 'padrão'}; colunas: ${rows._importInfo.cabecalhos || 'nenhuma'}${rows._importInfo.semDados ? '; sem dados recebidos em: ' + rows._importInfo.semDados : ''}`);
+      }
+    }
+
+    next.generatedAt = new Date().toLocaleString('pt-BR');
+    DATA = next;
+    refreshDashboard();
+    const counts = ['estoque','movimentacoes','financas'].map(key => `${key}: ${(DATA[key] || []).length} linha(s)`).join(' | ');
+    setSheetStatus(`Dados atualizados com sucesso. ${counts}. ${importInfos.join(' || ')}`, 'okText');
+  } catch (err) {
+    setSheetStatus(`Erro ao carregar Google Sheets: ${err.message}`, 'errorText');
+    if (showMessage) console.error(err);
+  }
+}
+
+function refreshDashboard() {
+  document.getElementById('generatedAt').textContent = DATA.generatedAt || new Date().toLocaleString('pt-BR');
+  setOptions('finStatus', uniq(DATA.financas.map(r=>r.Status)), 'Todos os status');
+  setOptions('finResp', uniq(DATA.financas.map(r=>r.Responsável)), 'Todos responsáveis');
+  setOptions('stockStatus', uniq(DATA.estoque.map(r=>r.Status)), 'Todos os status');
+  setOptions('stockCat', uniq(DATA.estoque.map(r=>r.Categoria)), 'Todas categorias');
+  setOptions('movTipo', uniq(DATA.movimentacoes.map(r=>r.Tipo)), 'Todos os tipos');
+  setOptions('movProduto', uniq(DATA.movimentacoes.map(r=>r.Produto)), 'Todos produtos');
+  renderHome(); renderFinanceiro(); renderEstoque(); renderMov();
+}
+function attachDashboardListeners() {
+  if (listenersAttached) return;
+  ['finStatus','finResp','finSearch'].forEach(id=>document.getElementById(id).addEventListener('input', renderFinanceiro));
+  ['stockStatus','stockCat','stockSearch'].forEach(id=>document.getElementById(id).addEventListener('input', renderEstoque));
+  ['movTipo','movProduto','movSearch'].forEach(id=>document.getElementById(id).addEventListener('input', renderMov));
+  listenersAttached = true;
+}
+
+
+function init() {
+  fillSheetConfig();
+  attachDashboardListeners();
+  refreshDashboard();
+  const savedLogo = localStorage.getItem('folkafeLogo');
+  if (savedLogo) setLogo(savedLogo);
+
+  const cfg = JSON.parse(localStorage.getItem(SHEET_CONFIG_KEY) || '{}');
+  if (cfg.api || cfg.estoque || cfg.movimentacoes || cfg.financas) {
+    loadFromSheets(false);
+  }
+  const fullUrlInput = document.getElementById('sheetFullUrl');
+  if (fullUrlInput) fullUrlInput.addEventListener('input', updateSheetPreview);
+}
+function setLogo(src) {
+  document.getElementById('companyLogo').src = src;
+  document.getElementById('companyLogo').style.display = 'block';
+  document.getElementById('logoPlaceholder').style.display = 'none';
+}
+function clearLogo() {
+  localStorage.removeItem('folkafeLogo');
+  document.getElementById('companyLogo').removeAttribute('src');
+  document.getElementById('companyLogo').style.display = 'none';
+  document.getElementById('logoPlaceholder').style.display = 'block';
+}
+document.getElementById('logoInput').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { localStorage.setItem('folkafeLogo', ev.target.result); setLogo(ev.target.result); };
+  reader.readAsDataURL(file);
+});
+init();
+</script>
+</body>
+</html>
